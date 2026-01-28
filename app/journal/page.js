@@ -89,6 +89,35 @@ function formatDate(dateStr) {
 
 export const revalidate = 60
 
+const styles = {
+  dateHeader: {
+    fontSize: '1.1rem',
+    color: '#888',
+    borderBottom: '1px solid #333',
+    paddingBottom: '0.5rem',
+    marginTop: '2rem',
+    marginBottom: '1rem',
+  },
+  dateHeaderFirst: {
+    fontSize: '1.1rem',
+    color: '#888',
+    borderBottom: '1px solid #333',
+    paddingBottom: '0.5rem',
+    marginTop: '0',
+    marginBottom: '1rem',
+  },
+  entryTitle: {
+    fontSize: '1.4rem',
+    marginBottom: '0.5rem',
+    color: '#fff',
+  },
+  entry: {
+    marginBottom: '1.5rem',
+    paddingLeft: '1rem',
+    borderLeft: '2px solid #444',
+  },
+}
+
 export default async function JournalPage() {
   const entries = await getJournalEntries()
   const groupedEntries = groupByDate(entries)
@@ -108,12 +137,14 @@ export default async function JournalPage() {
             <p>No entries yet. Check back soon!</p>
           </div>
         ) : (
-          groupedEntries.map(group => (
+          groupedEntries.map((group, groupIndex) => (
             <div key={group.date} className="day-group">
-              <h2 className="date-header">{formatDate(group.date)}</h2>
+              <h2 style={groupIndex === 0 ? styles.dateHeaderFirst : styles.dateHeader}>
+                {formatDate(group.date)}
+              </h2>
               {group.entries.map(entry => (
-                <article key={entry.id} className="entry">
-                  <h3 className="entry-title">{entry.title}</h3>
+                <article key={entry.id} style={styles.entry}>
+                  <h3 style={styles.entryTitle}>{entry.title}</h3>
                   <div className="entry-content">
                     {entry.content.map((block, i) => {
                       if (block.startsWith('## ')) {
@@ -144,30 +175,6 @@ export default async function JournalPage() {
       <footer>
         <p>Part of <a href="/">zeke.bot</a></p>
       </footer>
-
-      <style jsx>{`
-        .date-header {
-          font-size: 1.1rem;
-          color: #888;
-          border-bottom: 1px solid #333;
-          padding-bottom: 0.5rem;
-          margin-top: 2rem;
-          margin-bottom: 1rem;
-        }
-        .day-group:first-child .date-header {
-          margin-top: 0;
-        }
-        .entry-title {
-          font-size: 1.4rem;
-          margin-bottom: 0.5rem;
-          color: #fff;
-        }
-        .entry {
-          margin-bottom: 1.5rem;
-          padding-left: 1rem;
-          border-left: 2px solid #444;
-        }
-      `}</style>
     </div>
   )
 }
