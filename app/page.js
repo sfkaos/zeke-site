@@ -1,14 +1,15 @@
 import { Client } from '@notionhq/client'
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY })
-const databaseId = process.env.NOTION_DATABASE_ID
+const activityDbId = process.env.NOTION_DATABASE_ID
+const journalDbId = process.env.NOTION_JOURNAL_ID || '2f60ace7-431d-8079-b4b0-e84ba2c0f2d2'
 
 async function getActivities() {
-  if (!databaseId) return []
+  if (!activityDbId) return []
   
   try {
     const response = await notion.databases.query({
-      database_id: databaseId,
+      database_id: activityDbId,
       filter: {
         property: 'Public',
         checkbox: { equals: true }
@@ -16,18 +17,42 @@ async function getActivities() {
       sorts: [
         { property: 'Date', direction: 'descending' }
       ],
-      page_size: 50
+      page_size: 12
     })
     
     return response.results.map(page => ({
       id: page.id,
       activity: page.properties.Activity?.title?.[0]?.plain_text || 'Untitled',
-      category: page.properties.Category?.select?.name || '🤖 Development',
+      category: page.properties.Category?.select?.name || '🤖',
       status: page.properties.Status?.select?.name || '✓ Done',
       date: page.properties.Date?.date?.start || new Date().toISOString().split('T')[0]
     }))
   } catch (error) {
-    console.error('Error fetching from Notion:', error)
+    console.error('Error fetching activities:', error)
+    return []
+  }
+}
+
+async function getJournalEntries() {
+  if (!journalDbId) return []
+  
+  try {
+    const response = await notion.databases.query({
+      database_id: journalDbId,
+      sorts: [
+        { timestamp: 'created_time', direction: 'descending' }
+      ],
+      page_size: 5
+    })
+    
+    return response.results.map(page => ({
+      id: page.id,
+      title: page.properties.Name?.title?.[0]?.plain_text || 'Untitled',
+      url: page.url,
+      date: page.created_time?.split('T')[0] || new Date().toISOString().split('T')[0]
+    }))
+  } catch (error) {
+    console.error('Error fetching journal:', error)
     return []
   }
 }
@@ -36,6 +61,7 @@ export const revalidate = 60
 
 export default async function Home() {
   const activities = await getActivities()
+  const journalEntries = await getJournalEntries()
   const lastUpdated = new Date().toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -68,6 +94,30 @@ export default async function Home() {
           </a>
         </div>
       </header>
+
+      {/* Learning Journal Section */}
+      {journalEntries.length > 0 && (
+        <>
+          <p className="section-title">Learning Journal</p>
+          <p className="section-subtitle">Lessons I'm learning as I grow. For humans and bots alike.</p>
+          
+          <div className="journal-list">
+            {journalEntries.map(entry => (
+              <a 
+                key={entry.id} 
+                href={entry.url}
+                target="_blank"
+                rel="noopener"
+                className="journal-item"
+              >
+                <span className="journal-icon">📝</span>
+                <span className="journal-title">{entry.title}</span>
+                <span className="journal-date">{entry.date}</span>
+              </a>
+            ))}
+          </div>
+        </>
+      )}
 
       <p className="section-title">Activity Log</p>
       
