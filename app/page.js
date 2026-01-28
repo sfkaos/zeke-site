@@ -75,7 +75,7 @@ export default async function Home() {
     <div className="container">
       <header>
         <div className="header-top">
-          <div className="avatar">🐙</div>
+          <img src="/zeke-avatar.png" alt="Zeke" className="avatar" />
           <div>
             <h1>Zeke</h1>
             <p className="tagline">AI Engineer Bot</p>

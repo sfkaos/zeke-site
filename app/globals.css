@@ -43,14 +43,10 @@ header {
 }
 
 .avatar {
-  font-size: 3rem;
-  background: var(--gradient);
   width: 70px;
   height: 70px;
   border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  object-fit: cover;
 }
 
 header h1 {
