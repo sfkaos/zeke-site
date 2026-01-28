@@ -10,6 +10,7 @@ async function getJournalEntries() {
     const response = await notion.databases.query({
       database_id: journalDbId,
       sorts: [
+        { property: 'Date', direction: 'descending' },
         { timestamp: 'created_time', direction: 'descending' }
       ],
       page_size: 50
@@ -40,10 +41,14 @@ async function getJournalEntries() {
         return ''
       }).filter(Boolean)
       
+      // Use Date property if available, fall back to created_time
+      const dateFromProperty = page.properties.Date?.date?.start
+      const date = dateFromProperty || page.created_time?.split('T')[0]
+      
       return {
         id: page.id,
         title: page.properties.Name?.title?.[0]?.plain_text || 'Untitled',
-        date: page.created_time?.split('T')[0] || new Date().toISOString().split('T')[0],
+        date: date,
         content: content
       }
     }))
@@ -55,10 +60,38 @@ async function getJournalEntries() {
   }
 }
 
+// Group entries by date
+function groupByDate(entries) {
+  const groups = {}
+  entries.forEach(entry => {
+    const date = entry.date
+    if (!groups[date]) {
+      groups[date] = []
+    }
+    groups[date].push(entry)
+  })
+  // Return as array of { date, entries } sorted by date desc
+  return Object.keys(groups)
+    .sort((a, b) => b.localeCompare(a))
+    .map(date => ({ date, entries: groups[date] }))
+}
+
+// Format date nicely
+function formatDate(dateStr) {
+  const date = new Date(dateStr + 'T12:00:00')
+  return date.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  })
+}
+
 export const revalidate = 60
 
 export default async function JournalPage() {
   const entries = await getJournalEntries()
+  const groupedEntries = groupByDate(entries)
 
   return (
     <div className="container">
@@ -70,36 +103,40 @@ export default async function JournalPage() {
       </header>
 
       <div className="journal-entries">
-        {entries.length === 0 ? (
+        {groupedEntries.length === 0 ? (
           <div className="entry">
             <p>No entries yet. Check back soon!</p>
           </div>
         ) : (
-          entries.map(entry => (
-            <article key={entry.id} className="entry">
-              <h2>{entry.title}</h2>
-              <p className="entry-date">{entry.date}</p>
-              <div className="entry-content">
-                {entry.content.map((block, i) => {
-                  if (block.startsWith('## ')) {
-                    return <h3 key={i}>{block.slice(3)}</h3>
-                  } else if (block.startsWith('### ')) {
-                    return <h4 key={i}>{block.slice(4)}</h4>
-                  } else if (block.startsWith('• ')) {
-                    return <li key={i}>{block.slice(2)}</li>
-                  } else if (block.startsWith('1. ')) {
-                    return <li key={i}>{block.slice(3)}</li>
-                  } else if (block.startsWith('> ')) {
-                    return <blockquote key={i}>{block.slice(2)}</blockquote>
-                  } else if (block.startsWith('💡 ')) {
-                    return <div key={i} className="callout">{block}</div>
-                  } else if (block === '---') {
-                    return <hr key={i} />
-                  }
-                  return <p key={i}>{block}</p>
-                })}
-              </div>
-            </article>
+          groupedEntries.map(group => (
+            <div key={group.date} className="day-group">
+              <h2 className="date-header">{formatDate(group.date)}</h2>
+              {group.entries.map(entry => (
+                <article key={entry.id} className="entry">
+                  <h3 className="entry-title">{entry.title}</h3>
+                  <div className="entry-content">
+                    {entry.content.map((block, i) => {
+                      if (block.startsWith('## ')) {
+                        return <h4 key={i}>{block.slice(3)}</h4>
+                      } else if (block.startsWith('### ')) {
+                        return <h5 key={i}>{block.slice(4)}</h5>
+                      } else if (block.startsWith('• ')) {
+                        return <li key={i}>{block.slice(2)}</li>
+                      } else if (block.startsWith('1. ')) {
+                        return <li key={i}>{block.slice(3)}</li>
+                      } else if (block.startsWith('> ')) {
+                        return <blockquote key={i}>{block.slice(2)}</blockquote>
+                      } else if (block.startsWith('💡 ')) {
+                        return <div key={i} className="callout">{block}</div>
+                      } else if (block === '---') {
+                        return <hr key={i} />
+                      }
+                      return <p key={i}>{block}</p>
+                    })}
+                  </div>
+                </article>
+              ))}
+            </div>
           ))
         )}
       </div>
@@ -107,6 +144,30 @@ export default async function JournalPage() {
       <footer>
         <p>Part of <a href="/">zeke.bot</a></p>
       </footer>
+
+      <style jsx>{`
+        .date-header {
+          font-size: 1.1rem;
+          color: #888;
+          border-bottom: 1px solid #333;
+          padding-bottom: 0.5rem;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+        }
+        .day-group:first-child .date-header {
+          margin-top: 0;
+        }
+        .entry-title {
+          font-size: 1.4rem;
+          margin-bottom: 0.5rem;
+          color: #fff;
+        }
+        .entry {
+          margin-bottom: 1.5rem;
+          padding-left: 1rem;
+          border-left: 2px solid #444;
+        }
+      `}</style>
     </div>
   )
 }
