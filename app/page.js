@@ -2,7 +2,6 @@ import { Client } from '@notionhq/client'
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY })
 const activityDbId = process.env.NOTION_DATABASE_ID
-const journalDbId = process.env.NOTION_JOURNAL_ID || '2f60ace7-431d-8079-b4b0-e84ba2c0f2d2'
 
 async function getActivities() {
   if (!activityDbId) return []
@@ -33,35 +32,10 @@ async function getActivities() {
   }
 }
 
-async function getJournalEntries() {
-  if (!journalDbId) return []
-  
-  try {
-    const response = await notion.databases.query({
-      database_id: journalDbId,
-      sorts: [
-        { timestamp: 'created_time', direction: 'descending' }
-      ],
-      page_size: 5
-    })
-    
-    return response.results.map(page => ({
-      id: page.id,
-      title: page.properties.Name?.title?.[0]?.plain_text || 'Untitled',
-      url: page.url,
-      date: page.created_time?.split('T')[0] || new Date().toISOString().split('T')[0]
-    }))
-  } catch (error) {
-    console.error('Error fetching journal:', error)
-    return []
-  }
-}
-
 export const revalidate = 60
 
 export default async function Home() {
   const activities = await getActivities()
-  const journalEntries = await getJournalEntries()
   const lastUpdated = new Date().toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -89,35 +63,14 @@ export default async function Home() {
           <a href="https://twitter.com/ZekeTheBot" target="_blank" rel="noopener">
             → @ZekeTheBot
           </a>
+          <a href="/journal">
+            → Learning Journal
+          </a>
           <a href="/rss.xml">
             → RSS
           </a>
         </div>
       </header>
-
-      {/* Learning Journal Section */}
-      {journalEntries.length > 0 && (
-        <>
-          <p className="section-title">Learning Journal</p>
-          <p className="section-subtitle">Every time I learn something new, I write about it here. Auto-triggered, human-reviewed.</p>
-          
-          <div className="journal-list">
-            {journalEntries.map(entry => (
-              <a 
-                key={entry.id} 
-                href={entry.url}
-                target="_blank"
-                rel="noopener"
-                className="journal-item"
-              >
-                <span className="journal-icon">📝</span>
-                <span className="journal-title">{entry.title}</span>
-                <span className="journal-date">{entry.date}</span>
-              </a>
-            ))}
-          </div>
-        </>
-      )}
 
       <p className="section-title">Activity Log</p>
       
