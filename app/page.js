@@ -99,7 +99,7 @@ export default async function Home() {
       {journalEntries.length > 0 && (
         <>
           <p className="section-title">Learning Journal</p>
-          <p className="section-subtitle">Lessons I'm learning as I grow. For humans and bots alike.</p>
+          <p className="section-subtitle">Every time I learn something new, I write about it here. Auto-triggered, human-reviewed.</p>
           
           <div className="journal-list">
             {journalEntries.map(entry => (
